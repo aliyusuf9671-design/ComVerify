@@ -10,6 +10,7 @@ from backup import backup_command
 from verification import send_verification_embed
 from restore import restore_command
 from announce import announce_verified
+from customize import customize_bot
 
 
 load_dotenv()
@@ -61,12 +62,8 @@ bot = ComVerify()
     name="ping",
     description="Check if ComVerify is online."
 )
-async def ping(
-    interaction: discord.Interaction
-):
-    latency = round(
-        bot.latency * 1000
-    )
+async def ping(interaction: discord.Interaction):
+    latency = round(bot.latency * 1000)
 
     await interaction.response.send_message(
         f"🏓 Pong! `{latency}ms`"
@@ -84,12 +81,11 @@ async def ping(
 async def help_command(
     interaction: discord.Interaction
 ):
-
     embed = discord.Embed(
         title="ComVerify",
         description=(
-            "Community verification, "
-            "member backup and recovery."
+            "Community verification, member backup "
+            "and server recovery."
         ),
         color=discord.Color.blurple()
     )
@@ -112,7 +108,8 @@ async def help_command(
             "`/verify` — Send verification panel\n"
             "`/backup` — Create a backup\n"
             "`/restore` — Restore a backup\n"
-            "`/announce` — Announce to verified members"
+            "`/announce` — Announce to verified members\n"
+            "`/customize` — Customize ComVerify"
         ),
         inline=False
     )
@@ -145,7 +142,6 @@ async def login(
     interaction: discord.Interaction,
     project_key: str
 ):
-
     if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message(
             "❌ You need Administrator permissions "
@@ -177,9 +173,7 @@ async def login(
         )
 
     except Exception as error:
-        print(
-            f"Login API error: {error}"
-        )
+        print(f"Login API error: {error}")
 
         await interaction.followup.send(
             "❌ I couldn't connect to the "
@@ -188,10 +182,7 @@ async def login(
         )
         return
 
-    if status == 200 and result.get(
-        "success"
-    ):
-
+    if status == 200 and result.get("success"):
         project_name = result.get(
             "project_name",
             "ComVerify project"
@@ -203,39 +194,33 @@ async def login(
             f"**{project_name}**.",
             ephemeral=True
         )
-
         return
 
     if status == 401:
-
         message = (
             "❌ That project key is invalid "
             "or expired."
         )
 
     elif status == 403:
-
         message = (
             "❌ You don't have permission "
             "to use that project key."
         )
 
     elif status == 409:
-
         message = (
             "❌ This server is already "
             "linked to a project."
         )
 
     elif status == 429:
-
         message = (
             "⏳ Too many login attempts. "
             "Please try again later."
         )
 
     else:
-
         message = (
             "❌ The ComVerify dashboard "
             "rejected the login."
@@ -258,7 +243,6 @@ async def login(
 async def verify(
     interaction: discord.Interaction
 ):
-
     if interaction.guild is None:
         await interaction.response.send_message(
             "❌ This command can only be used "
@@ -330,6 +314,30 @@ async def announce(
     await announce_verified(
         interaction,
         message
+    )
+
+
+# =========================
+# /customize
+# =========================
+
+@bot.tree.command(
+    name="customize",
+    description="Customize ComVerify for this server."
+)
+@app_commands.describe(
+    display_name=(
+        "The display name ComVerify should use "
+        "in this server."
+    )
+)
+async def customize(
+    interaction: discord.Interaction,
+    display_name: str
+):
+    await customize_bot(
+        interaction,
+        display_name
     )
 
 
