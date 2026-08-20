@@ -6,6 +6,7 @@ from discord import app_commands
 from dotenv import load_dotenv
 
 from database import initialize_database
+from server import link_dashboard_server
 from backup import backup_command
 from verification import send_verification_embed
 from restore import restore_command
@@ -152,6 +153,13 @@ async def login(interaction: discord.Interaction, project_key: str):
         return
 
     if status == 200 and result.get("success"):
+        link_dashboard_server(
+            project_id=int(result["project_id"]),
+            project_name=result.get("project_name", "ComVerify project"),
+            owner_id=str(interaction.user.id),
+            guild_id=str(interaction.guild.id),
+            guild_name=interaction.guild.name,
+        )
         await interaction.followup.send(
             "✅ **Server connected!**\n\n"
             f"This server is now linked to **{result.get('project_name', 'ComVerify project')}**.",
