@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from database import initialize_database
 from api import api
 from backup import backup_command
+from verification import send_verification_embed
 
 
 load_dotenv()
@@ -20,7 +21,6 @@ if not TOKEN:
     )
 
 
-# Initialize the database when the bot starts
 initialize_database()
 
 
@@ -35,7 +35,6 @@ class ComVerify(discord.Client):
         self.tree = app_commands.CommandTree(self)
 
     async def setup_hook(self):
-        # Register slash commands with Discord
         await self.tree.sync()
 
     async def on_ready(self):
@@ -88,21 +87,13 @@ async def help_command(interaction: discord.Interaction):
     )
 
     embed.add_field(
-        name="Getting Started",
-        value=(
-            "`/login` — Connect this server to a "
-            "ComVerify project."
-        ),
-        inline=False
-    )
-
-    embed.add_field(
         name="Commands",
         value=(
             "`/ping` — Check bot latency\n"
             "`/help` — Show this menu\n"
             "`/login` — Connect your server\n"
-            "`/backup` — Create a backup"
+            "`/backup` — Create a backup\n"
+            "`/verify` — Send the verification message"
         ),
         inline=False
     )
@@ -240,6 +231,37 @@ async def backup(
     interaction: discord.Interaction
 ):
     await backup_command(interaction)
+
+
+# -------------------------
+# /verify
+# -------------------------
+
+@bot.tree.command(
+    name="verify",
+    description="Send the ComVerify verification message."
+)
+async def verify(
+    interaction: discord.Interaction
+):
+
+    if interaction.guild is None:
+        await interaction.response.send_message(
+            "❌ This command can only be used inside "
+            "a Discord server.",
+            ephemeral=True
+        )
+        return
+
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message(
+            "❌ You need Administrator permissions "
+            "to use this command.",
+            ephemeral=True
+        )
+        return
+
+    await send_verification_embed(interaction)
 
 
 # -------------------------
