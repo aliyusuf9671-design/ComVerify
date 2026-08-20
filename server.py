@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from database import get_database
 
 
@@ -45,10 +47,7 @@ def get_server_by_guild(guild_id: str):
 
 
 def can_add_server(project_id: int) -> bool:
-    return (
-        count_project_servers(project_id)
-        < MAX_SERVERS_PER_PROJECT
-    )
+    return count_project_servers(project_id) < MAX_SERVERS_PER_PROJECT
 
 
 def add_server(
@@ -57,7 +56,6 @@ def add_server(
     guild_name: str,
     linked_at: str
 ) -> bool:
-
     if not can_add_server(project_id):
         return False
 
@@ -72,15 +70,39 @@ def add_server(
             )
             VALUES (?, ?, ?, ?)
             """,
-            (
-                project_id,
-                guild_id,
-                guild_name,
-                linked_at
-            )
+            (project_id, guild_id, guild_name, linked_at)
         )
 
     return True
+
+
+def link_dashboard_server(
+    project_id: int,
+    project_name: str,
+    owner_id: str,
+    guild_id: str,
+    guild_name: str,
+) -> None:
+    """Mirror a successful dashboard link into the bot's local state."""
+    linked_at = datetime.now(timezone.utc).isoformat()
+
+    with get_database() as db:
+        db.execute(
+            """
+            INSERT OR IGNORE INTO projects (id, name, owner_id, created_at)
+            VALUES (?, ?, ?, ?)
+            """,
+            (project_id, project_name, owner_id, linked_at)
+        )
+        db.execute(
+            """
+            INSERT OR IGNORE INTO linked_servers (
+                project_id, guild_id, guild_name, linked_at
+            )
+            VALUES (?, ?, ?, ?)
+            """,
+            (project_id, guild_id, guild_name, linked_at)
+        )
 
 
 def remove_server(guild_id: str) -> bool:
