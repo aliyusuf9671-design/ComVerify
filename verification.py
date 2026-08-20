@@ -15,7 +15,7 @@ class VerifyView(discord.ui.View):
         self.add_item(
             discord.ui.Button(
                 label=button_text,
-                style=discord.ButtonStyle.success,
+                style=discord.ButtonStyle.link,
                 emoji=button_emoji,
                 url=verification_url
             )
@@ -34,10 +34,19 @@ async def send_verification_embed(
         )
         return
 
-    config = load_config(str(guild.id))
-    verification = config["verification"]
+    config = load_config(
+        str(guild.id)
+    )
 
-    if not verification["enabled"]:
+    verification = config.get(
+        "verification",
+        {}
+    )
+
+    if not verification.get(
+        "enabled",
+        True
+    ):
         await interaction.response.send_message(
             "❌ Verification is currently disabled.",
             ephemeral=True
@@ -50,18 +59,10 @@ async def send_verification_embed(
 
     if not verification_url:
         await interaction.response.send_message(
-            "⚠️ The verification system hasn't been "
-            "configured yet.",
+            "⚠️ Verification hasn't been configured yet.",
             ephemeral=True
         )
         return
-
-    color = discord.Color(
-        verification.get(
-            "color",
-            0x5865F2
-        )
-    )
 
     embed = discord.Embed(
         title=verification.get(
@@ -72,7 +73,12 @@ async def send_verification_embed(
             "description",
             "Click the button below to begin verification."
         ),
-        color=color
+        color=discord.Color(
+            verification.get(
+                "color",
+                0x5865F2
+            )
+        )
     )
 
     embed.set_footer(
