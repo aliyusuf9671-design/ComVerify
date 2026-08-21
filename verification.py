@@ -2,7 +2,7 @@ import os
 
 import discord
 
-from database import get_linked_server, is_server_linked
+from database import get_login_context
 
 
 class VerifyView(discord.ui.View):
@@ -16,8 +16,8 @@ async def send_verification_embed(interaction: discord.Interaction):
     if guild is None:
         await interaction.response.send_message("❌ This command can only be used inside a server.", ephemeral=True)
         return
-    linked = get_linked_server(str(guild.id))
-    if not linked or not is_server_linked(str(guild.id)):
+    linked = get_login_context(str(guild.id))
+    if not linked or not linked["project_key"]:
         await interaction.response.send_message("🔒 **ComVerify isn't set up yet.**\n\nUse `/login` with your dashboard project key first.", ephemeral=True)
         return
     dashboard_server_id = linked["dashboard_server_id"]
