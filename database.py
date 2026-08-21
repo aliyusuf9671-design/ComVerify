@@ -3,12 +3,9 @@ import sqlite3
 from pathlib import Path
 
 
-DATABASE_PATH = Path(
-    os.getenv(
-        "DATABASE_PATH",
-        "comverify.db"
-    )
-)
+DEFAULT_DATABASE_PATH = Path(__file__).resolve().parent / "comverify.db"
+DATABASE_PATH = Path(os.getenv("DATABASE_PATH", str(DEFAULT_DATABASE_PATH))).expanduser().resolve()
+DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 
 def get_database():
@@ -174,3 +171,25 @@ def get_project(
             """,
             (project_id,)
         ).fetchone()
+
+
+def get_login_context(guild_id: str):
+    """Return the single authoritative login record for a Discord guild."""
+    with get_database() as db:
+        return db.execute(
+            """
+            SELECT linked_servers.*, projects.name AS project_name,
+                   projects.owner_id AS project_owner_id,
+                   projects.project_key AS project_key
+            FROM linked_servers
+            INNER JOIN projects ON projects.id = linked_servers.project_id
+            WHERE linked_servers.guild_id = ?
+            LIMIT 1
+            """,
+            (str(guild_id),),
+        ).fetchone()
+
+
+def is_login_ready(guild_id: str) -> bool:
+    context = get_login_context(guild_id)
+    return bool(context and context["project_key"])
