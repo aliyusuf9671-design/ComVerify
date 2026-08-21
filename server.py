@@ -96,15 +96,24 @@ def link_dashboard_server(
             """,
             (project_id, project_name, owner_id, project_key, linked_at)
         )
-        db.execute(
+        updated = db.execute(
             """
-            INSERT OR IGNORE INTO linked_servers (
-                project_id, dashboard_server_id, guild_id, guild_name, linked_at
-            )
-            VALUES (?, ?, ?, ?, ?)
+            UPDATE linked_servers
+            SET project_id = ?, dashboard_server_id = ?, guild_name = ?, linked_at = ?
+            WHERE guild_id = ?
             """,
-            (project_id, dashboard_server_id, guild_id, guild_name, linked_at)
+            (project_id, dashboard_server_id, guild_name, linked_at, guild_id),
         )
+        if updated.rowcount == 0:
+            db.execute(
+                """
+                INSERT INTO linked_servers (
+                    project_id, dashboard_server_id, guild_id, guild_name, linked_at
+                )
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (project_id, dashboard_server_id, guild_id, guild_name, linked_at),
+            )
         if project_key:
             db.execute("UPDATE projects SET project_key = ? WHERE id = ?", (project_key, project_id))
 
