@@ -82,6 +82,8 @@ def link_dashboard_server(
     owner_id: str,
     guild_id: str,
     guild_name: str,
+    dashboard_server_id: int | None = None,
+    project_key: str | None = None,
 ) -> None:
     """Mirror a successful dashboard link into the bot's local state."""
     linked_at = datetime.now(timezone.utc).isoformat()
@@ -89,20 +91,22 @@ def link_dashboard_server(
     with get_database() as db:
         db.execute(
             """
-            INSERT OR IGNORE INTO projects (id, name, owner_id, created_at)
-            VALUES (?, ?, ?, ?)
+            INSERT OR IGNORE INTO projects (id, name, owner_id, project_key, created_at)
+            VALUES (?, ?, ?, ?, ?)
             """,
-            (project_id, project_name, owner_id, linked_at)
+            (project_id, project_name, owner_id, project_key, linked_at)
         )
         db.execute(
             """
             INSERT OR IGNORE INTO linked_servers (
-                project_id, guild_id, guild_name, linked_at
+                project_id, dashboard_server_id, guild_id, guild_name, linked_at
             )
-            VALUES (?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?)
             """,
-            (project_id, guild_id, guild_name, linked_at)
+            (project_id, dashboard_server_id, guild_id, guild_name, linked_at)
         )
+        if project_key:
+            db.execute("UPDATE projects SET project_key = ? WHERE id = ?", (project_key, project_id))
 
 
 def remove_server(guild_id: str) -> bool:
