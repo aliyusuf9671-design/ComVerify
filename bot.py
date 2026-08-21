@@ -63,6 +63,10 @@ class ComVerify(discord.Client):
         await self.tree.sync()
 
     async def on_ready(self):
+        # Sync guild command definitions immediately so backup public IDs are accepted as text.
+        for guild in self.guilds:
+            self.tree.copy_global_to(guild=guild)
+            await self.tree.sync(guild=guild)
         print("--------------------------------")
         print("        ComVerify Online")
         print("--------------------------------")
@@ -198,7 +202,7 @@ async def backup(interaction: discord.Interaction):
 
 @bot.tree.command(name="restore", description="Restore a ComVerify backup.")
 @app_commands.describe(backup_id="Optional dashboard backup ID; defaults to the latest backup.")
-async def restore(interaction: discord.Interaction, backup_id: int | None = None):
+async def restore(interaction: discord.Interaction, backup_id: str | None = None):
     await restore_command(interaction, backup_id)
 
 
