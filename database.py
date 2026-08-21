@@ -30,6 +30,7 @@ def initialize_database():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 owner_id TEXT NOT NULL,
+                project_key TEXT,
                 created_at TEXT NOT NULL
             )
         """)
@@ -39,6 +40,7 @@ def initialize_database():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
 
                 project_id INTEGER NOT NULL,
+                dashboard_server_id INTEGER,
 
                 guild_id TEXT NOT NULL UNIQUE,
 
@@ -51,6 +53,14 @@ def initialize_database():
                     ON DELETE CASCADE
             )
         """)
+
+        project_columns = {row[1] for row in db.execute("PRAGMA table_info(projects)").fetchall()}
+        if "project_key" not in project_columns:
+            db.execute("ALTER TABLE projects ADD COLUMN project_key TEXT")
+
+        columns = {row[1] for row in db.execute("PRAGMA table_info(linked_servers)").fetchall()}
+        if "dashboard_server_id" not in columns:
+            db.execute("ALTER TABLE linked_servers ADD COLUMN dashboard_server_id INTEGER")
 
         db.execute("""
             CREATE TABLE IF NOT EXISTS verified_members (
