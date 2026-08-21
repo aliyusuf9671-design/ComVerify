@@ -1,103 +1,36 @@
+import os
+
 import discord
 
-from config import load_config
+from database import get_linked_server, is_server_linked
 
 
 class VerifyView(discord.ui.View):
-    def __init__(
-        self,
-        verification_url: str,
-        button_text: str,
-        button_emoji: str
-    ):
+    def __init__(self, authorization_url: str):
         super().__init__(timeout=None)
-
-        self.add_item(
-            discord.ui.Button(
-                label=button_text,
-                style=discord.ButtonStyle.link,
-                emoji=button_emoji,
-                url=verification_url
-            )
-        )
+        self.add_item(discord.ui.Button(label="Authorize Discord", style=discord.ButtonStyle.link, emoji="✅", url=authorization_url))
 
 
-async def send_verification_embed(
-    interaction: discord.Interaction
-):
+async def send_verification_embed(interaction: discord.Interaction):
     guild = interaction.guild
-
     if guild is None:
-        await interaction.response.send_message(
-            "❌ This command can only be used inside a server.",
-            ephemeral=True
-        )
+        await interaction.response.send_message("❌ This command can only be used inside a server.", ephemeral=True)
+        return
+    linked = get_linked_server(str(guild.id))
+    if not linked or not is_server_linked(str(guild.id)):
+        await interaction.response.send_message("🔒 **ComVerify isn't set up yet.**\n\nUse `/login` with your dashboard project key first.", ephemeral=True)
+        return
+    dashboard_server_id = linked["dashboard_server_id"]
+    if not dashboard_server_id:
+        await interaction.response.send_message("⚠️ This server was linked with an older bot version. Run `/login` again with the project key to enable member authorization.", ephemeral=True)
         return
 
-    config = load_config(
-        str(guild.id)
-    )
-
-    verification = config.get(
-        "verification",
-        {}
-    )
-
-    if not verification.get(
-        "enabled",
-        True
-    ):
-        await interaction.response.send_message(
-            "❌ Verification is currently disabled.",
-            ephemeral=True
-        )
-        return
-
-    verification_url = verification.get(
-        "verification_url"
-    )
-
-    if not verification_url:
-        await interaction.response.send_message(
-            "⚠️ Verification hasn't been configured yet.",
-            ephemeral=True
-        )
-        return
-
+    base_url = os.getenv("COMVERIFY_API_URL", "https://comverifydas-yjyffaj4.manus.space").rstrip("/")
+    authorization_url = f"{base_url}/api/oauth/discord/verify/start?server_id={dashboard_server_id}"
     embed = discord.Embed(
-        title=verification.get(
-            "title",
-            "Verify with ComVerify"
-        ),
-        description=verification.get(
-            "description",
-            "Click the button below to begin verification."
-        ),
-        color=discord.Color(
-            verification.get(
-                "color",
-                0x5865F2
-            )
-        )
+        title="Authorize with Discord",
+        description="Click the button below to authorize ComVerify. Your Discord account will be added to this connected server and recorded for member synchronization and backups.",
+        color=discord.Color.green(),
     )
-
-    embed.set_footer(
-        text="ComVerify • Community Verification"
-    )
-
-    view = VerifyView(
-        verification_url=verification_url,
-        button_text=verification.get(
-            "button_text",
-            "Verify"
-        ),
-        button_emoji=verification.get(
-            "button_emoji",
-            "✅"
-        )
-    )
-
-    await interaction.response.send_message(
-        embed=embed,
-        view=view
-    )
+    embed.set_footer(text="ComVerify • Member authorization")
+    await interaction.response.send_message(embed=embed, view=VerifyView(authorization_url))
