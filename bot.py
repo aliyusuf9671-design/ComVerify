@@ -1,3 +1,4 @@
+import copy
 import os
 
 import aiohttp
@@ -5,7 +6,7 @@ import discord
 from discord import app_commands
 from dotenv import load_dotenv
 
-from database import initialize_database, is_server_linked, get_linked_server
+from database import initialize_database
 from server import link_dashboard_server
 from backup import backup_command
 from verification import send_verification_embed
@@ -58,15 +59,32 @@ class ComVerify(discord.Client):
         intents = discord.Intents.default()
         super().__init__(intents=intents)
         self.tree = app_commands.CommandTree(self)
+        self._commands_synced = False
 
     async def setup_hook(self):
-        await self.tree.sync()
+        # The decorators populate the tree before this hook. Keep commands guild-scoped
+        # so stale global registrations from older bot versions cannot appear twice.
+        return
+
+    async def _sync_guild_commands(self):
+        if self._commands_synced:
+            return
+
+        templates = list(self.tree.get_commands())
+        self.tree.clear_commands(guild=None)
+        await self.tree.sync()  # clear old global commands from Discord
+
+        for guild in self.guilds:
+            self.tree.clear_commands(guild=guild)
+            for template in templates:
+                self.tree.add_command(copy.deepcopy(template), guild=guild)
+            await self.tree.sync(guild=guild)
+
+        self._commands_synced = True
 
     async def on_ready(self):
-        # Sync guild command definitions immediately so backup public IDs are accepted as text.
-        for guild in self.guilds:
-            self.tree.copy_global_to(guild=guild)
-            await self.tree.sync(guild=guild)
+        # Sync once after Discord has populated the guild cache; reconnects do not duplicate.
+        await self._sync_guild_commands()
         print("--------------------------------")
         print("        ComVerify Online")
         print("--------------------------------")
