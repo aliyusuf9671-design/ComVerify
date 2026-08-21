@@ -30,7 +30,6 @@ def default_config() -> dict:
             "color": 0x5865F2,
             "button_text": "Verify",
             "button_emoji": "✅",
-            "verification_url": None
         },
 
         "backup": {
