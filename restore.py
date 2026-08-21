@@ -1,10 +1,10 @@
 import discord
 
 from api import ComVerifyAPI
-from database import get_linked_server, get_project, is_server_linked
+from database import get_login_context
 
 
-async def restore_command(interaction: discord.Interaction, backup_id: int | None = None):
+async def restore_command(interaction: discord.Interaction, backup_id: str | None = None):
     guild = interaction.guild
     if guild is None:
         await interaction.response.send_message("❌ This command can only be used inside a server.", ephemeral=True)
@@ -12,22 +12,21 @@ async def restore_command(interaction: discord.Interaction, backup_id: int | Non
     if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("❌ You need Administrator permissions to restore a backup.", ephemeral=True)
         return
-    linked = get_linked_server(str(guild.id))
-    project = get_project(linked["project_id"]) if linked else None
-    if not is_server_linked(str(guild.id)) or not linked or not project or not project["project_key"]:
+    context = get_login_context(str(guild.id))
+    if not context or not context["project_key"]:
         await interaction.response.send_message("🔒 **ComVerify isn't set up yet.**\n\nUse `/login` with your ComVerify project key first.", ephemeral=True)
         return
 
     api = ComVerifyAPI()
     if backup_id is None:
-        status, result = await api.list_backups(project["project_key"], str(guild.id))
+        status, result = await api.list_backups(context["project_key"], str(guild.id))
         if status != 200 or not result.get("backups"):
             await interaction.response.send_message("❌ No stored backups are available for this server.", ephemeral=True)
             return
-        backup_id = int(result["backups"][0]["id"])
+        backup_id = str(result["backups"][0]["id"])
 
     await interaction.response.defer(ephemeral=True)
-    status, result = await api.fetch_backup(project["project_key"], str(guild.id), backup_id)
+    status, result = await api.fetch_backup(context["project_key"], str(guild.id), backup_id)
     if status != 200 or not result.get("success"):
         await interaction.followup.send(f"❌ Backup could not be loaded: {result.get('error', f'HTTP {status}')}", ephemeral=True)
         return
@@ -56,7 +55,7 @@ async def restore_command(interaction: discord.Interaction, backup_id: int | Non
         except discord.HTTPException:
             continue
 
-    complete_status, complete_result = await api.complete_restore(project["project_key"], str(guild.id), backup_id)
+    complete_status, complete_result = await api.complete_restore(context["project_key"], str(guild.id), backup_id)
     if complete_status != 200 or not complete_result.get("success"):
         await interaction.followup.send("⚠️ The structure was restored, but the dashboard could not mark the backup as restored.", ephemeral=True)
         return
