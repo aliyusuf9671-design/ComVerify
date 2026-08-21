@@ -3,7 +3,7 @@ import os
 import aiohttp
 import discord
 from discord import app_commands
-from dotenv import load_dotenvimport os
+from dotenv import load_dotenvimport osVAV
 
 import aiohttp
 import discord
